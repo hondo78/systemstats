@@ -1,0 +1,26 @@
+services:
+  systemstats:
+    build: .
+    container_name: systemstats
+    restart: unless-stopped
+    # Host-Sicht: Prozesse und Netzwerk des Hosts statt des Containers
+    pid: host
+    network_mode: host
+    cgroup: host        # absolute cgroup-Pfade -> Container-Zuordnung auch für eigene Prozesse
+    environment:
+      - PORT=8097
+      - TZ=Europe/Vienna
+    cap_add:
+      - SYS_PTRACE        # /proc/<pid>/io, offene Dateien, Sockets fremder Prozesse
+      - DAC_READ_SEARCH   # Verzeichnis-Scan auch in geschützten Verzeichnissen
+    security_opt:
+      - apparmor=unconfined
+    volumes:
+      - type: bind
+        source: /
+        target: /hostfs
+        read_only: true
+        bind:
+          propagation: rslave
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/data

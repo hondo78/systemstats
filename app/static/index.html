@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Systemstats</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%234f9cff'/><path d='M2 11l3-4 3 3 3-6 3 5' stroke='white' stroke-width='1.6' fill='none'/></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot" id="statusDot"></span><span id="hostName">Systemstats</span></div>
+  <div class="hostmeta" id="hostMeta"></div>
+  <nav id="nav">
+    <a href="#overview" data-view="overview">Übersicht</a>
+    <a href="#processes" data-view="processes">Prozesse</a>
+    <a href="#containers" data-view="containers">Container</a>
+    <a href="#storage" data-view="storage">Speicher</a>
+    <a href="#network" data-view="network">Netzwerk</a>
+    <a href="#analysis" data-view="analysis">Analyse</a>
+  </nav>
+  <button class="iconbtn" id="themeBtn" title="Hell/Dunkel umschalten">◐</button>
+</header>
+
+<main>
+  <!-- ====================================================== Übersicht -->
+  <section class="view" id="view-overview">
+    <div class="grid kpis">
+      <div class="card kpi">
+        <h3>CPU <span class="spacer"></span><span class="sub" id="kCpuModel"></span></h3>
+        <div class="big" id="kCpu">–</div>
+        <div class="chart mini" id="mCpu"></div>
+        <div class="rows">
+          <span>Last 1/5/15</span><span id="kLoad">–</span>
+          <span>Takt</span><span id="kFreq">–</span>
+          <span>Temperatur</span><span id="kCpuTemp">–</span>
+          <span>user / sys / iowait</span><span id="kCpuSplit">–</span>
+        </div>
+      </div>
+      <div class="card kpi">
+        <h3>Arbeitsspeicher</h3>
+        <div class="big" id="kMem">–</div>
+        <div class="chart mini" id="mMem"></div>
+        <div class="meter"><span>Belegt</span><span id="kMemTxt">–</span><div class="bar"><i id="kMemBar"></i></div></div>
+        <div class="meter"><span>Swap</span><span id="kSwapTxt">–</span><div class="bar"><i id="kSwapBar"></i></div></div>
+        <div class="rows"><span>Cache/Buffer</span><span id="kCache">–</span><span>Verfügbar</span><span id="kAvail">–</span></div>
+      </div>
+      <div class="card kpi" id="gpuCard">
+        <h3>GPU <span class="spacer"></span><span class="sub" id="kGpuName"></span></h3>
+        <div class="big" id="kGpu">–</div>
+        <div class="chart mini" id="mGpu"></div>
+        <div class="meter"><span>VRAM</span><span id="kVramTxt">–</span><div class="bar"><i id="kVramBar"></i></div></div>
+        <div class="meter"><span>GTT (Shared)</span><span id="kGttTxt">–</span><div class="bar"><i id="kGttBar"></i></div></div>
+        <div class="rows"><span>Temperatur / Leistung</span><span id="kGpuTP">–</span><span>Takt</span><span id="kGpuClk">–</span></div>
+      </div>
+      <div class="card kpi">
+        <h3>Netzwerk &amp; Datenträger</h3>
+        <div class="big" id="kNet">–</div>
+        <div class="chart mini" id="mNet"></div>
+        <div class="rows">
+          <span>Empfangen</span><span id="kRx">–</span>
+          <span>Gesendet</span><span id="kTx">–</span>
+          <span>Disk lesen</span><span id="kDr">–</span>
+          <span>Disk schreiben</span><span id="kDw">–</span>
+        </div>
+      </div>
+      <div class="card kpi">
+        <h3>System</h3>
+        <div class="big" id="kUptime">–</div>
+        <div class="rows" id="kSys"></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h3>Zustand <span class="spacer"></span><a href="#analysis" class="sub">alle Befunde →</a></h3>
+        <div class="statusline" id="healthSummary"></div>
+        <div class="findings" id="healthTop"></div>
+      </div>
+      <div class="card">
+        <h3>CPU-Kerne <span class="spacer"></span><span class="sub" id="coreInfo"></span></h3>
+        <div class="cores" id="cores"></div>
+      </div>
+    </div>
+
+    <div class="toolbar mt">
+      <span class="muted">Zeitfenster:</span>
+      <div class="seg" id="liveWindow">
+        <button data-w="300">5 min</button><button data-w="900" class="active">15 min</button><button data-w="1800">30 min</button><button data-w="3600">60 min</button>
+      </div>
+    </div>
+    <div class="grid cols-3">
+      <div class="card"><h3>CPU-Auslastung</h3><div class="chart" id="cCpu"></div></div>
+      <div class="card"><h3>Arbeitsspeicher</h3><div class="chart" id="cMem"></div></div>
+      <div class="card"><h3>GPU</h3><div class="chart" id="cGpu"></div></div>
+      <div class="card"><h3>Netzwerk (physisch)</h3><div class="chart" id="cNet"></div></div>
+      <div class="card"><h3>Datenträger-I/O</h3><div class="chart" id="cDisk"></div></div>
+      <div class="card"><h3>Temperaturen</h3><div class="chart" id="cTemp"></div></div>
+    </div>
+
+    <div class="grid cols-3 mt">
+      <div class="card"><h3>Top-Prozesse CPU</h3><div id="topCpu"></div></div>
+      <div class="card"><h3>Top-Prozesse RAM</h3><div id="topMem"></div></div>
+      <div class="card"><h3>Dateisysteme <span class="spacer"></span><a href="#storage" class="sub">Details →</a></h3><div id="ovMounts"></div></div>
+    </div>
+  </section>
+
+  <!-- ====================================================== Prozesse -->
+  <section class="view" id="view-processes">
+    <div class="statusline" id="procSummary"></div>
+    <div class="toolbar">
+      <input type="search" id="procSearch" placeholder="Suche: Name, PID, Befehl, Benutzer, Container …">
+      <select id="procUser"><option value="">Alle Benutzer</option></select>
+      <select id="procContainer"><option value="">Host + Container</option><option value="__host">Nur Host</option><option value="__any">Nur Container</option></select>
+      <div class="seg" id="procMode"><button data-m="list" class="active">Liste</button><button data-m="group">Nach Name</button><button data-m="tree">Baum</button></div>
+      <span class="grow"></span>
+      <label class="chk"><input type="checkbox" id="procPause"> Pausieren</label>
+      <span class="muted" id="procCount"></span>
+    </div>
+    <div class="tablewrap" style="max-height: calc(100vh - 230px)">
+      <table id="procTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ====================================================== Container -->
+  <section class="view" id="view-containers">
+    <div class="statusline" id="ctSummary"></div>
+    <div class="toolbar">
+      <input type="search" id="ctSearch" placeholder="Suche: Name, Image, Stack …">
+      <div class="seg" id="ctState"><button data-s="running" class="active">Laufend</button><button data-s="all">Alle</button><button data-s="stopped">Gestoppt</button></div>
+      <label class="chk"><input type="checkbox" id="ctGroup" checked> Nach Stack gruppieren</label>
+    </div>
+    <div class="tablewrap" style="max-height: calc(100vh - 230px)">
+      <table id="ctTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ====================================================== Speicher -->
+  <section class="view" id="view-storage">
+    <div class="grid cols-2">
+      <div class="card"><h3>Dateisysteme</h3><div id="stMounts" class="grid"></div></div>
+      <div class="card"><h3>Datenträger</h3><div id="stDisks"></div></div>
+    </div>
+    <div class="card mt">
+      <h3>Verzeichnisanalyse <span class="spacer"></span><span class="sub muted">bleibt im Dateisystem des Startpfads, zählt belegte Blöcke wie <span class="mono">du</span></span></h3>
+      <div class="toolbar">
+        <input type="text" id="scanPath" value="/" style="width: 320px" class="mono">
+        <button class="btn primary" id="scanStart">Scannen</button>
+        <button class="btn" id="scanCancel" style="display:none">Abbrechen</button>
+        <span class="quick" id="scanQuick"></span>
+        <span class="grow"></span>
+        <select id="scanHistory"><option value="">Frühere Scans …</option></select>
+      </div>
+      <div id="scanStatus" class="muted"></div>
+      <div class="grid cols-2 mt" id="scanResult" style="display:none">
+        <div>
+          <div class="crumbs" id="scanCrumbs"></div>
+          <div class="tablewrap short" style="max-height: 520px"><table id="scanTable"><tbody></tbody></table></div>
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom:8px">Größte Dateien im Scan</div>
+          <div class="tablewrap short" style="max-height: 520px"><table id="scanLargest"><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h3>Docker-Belegung <span class="spacer"></span><span class="sub muted" id="dfTime"></span><button class="btn small" id="dfRefresh">Neu berechnen</button></h3>
+        <div id="dockerDf"><div class="empty"><span class="spin"></span> wird berechnet …</div></div>
+      </div>
+      <div class="card">
+        <h3>Container-Logs <span class="spacer"></span><span class="sub" id="logsTotal"></span></h3>
+        <div class="tablewrap short"><table id="logsTable"><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== Netzwerk -->
+  <section class="view" id="view-network">
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Schnittstellen <span class="spacer"></span><label class="chk sub"><input type="checkbox" id="netVirtual"> virtuelle anzeigen</label></h3>
+        <div class="tablewrap short"><table id="ifTable"><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3>Durchsatz je Schnittstelle</h3>
+        <div class="chart tall" id="cIf"></div>
+      </div>
+    </div>
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h3>Offene Ports (Listen) <span class="spacer"></span><input type="search" id="portSearch" placeholder="Filter …" style="width:180px"></h3>
+        <div class="tablewrap" style="max-height: 520px"><table id="portTable"><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3>TCP-Verbindungen</h3>
+        <div id="tcpStates" class="statusline"></div>
+        <div class="muted" style="margin:8px 0 4px">Häufigste Gegenstellen (ESTABLISHED)</div>
+        <div class="tablewrap short"><table id="remoteTable"><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== Analyse -->
+  <section class="view" id="view-analysis">
+    <div class="toolbar">
+      <span class="muted">Zeitraum:</span>
+      <div class="seg" id="anRange">
+        <button data-r="15m">15 min</button><button data-r="1h">1 h</button><button data-r="6h">6 h</button><button data-r="24h" class="active">24 h</button><button data-r="7d">7 Tage</button><button data-r="30d">30 Tage</button>
+      </div>
+      <span class="muted" id="anInfo"></span>
+    </div>
+    <div class="grid cols-2">
+      <div class="card"><h3>Befunde</h3><div class="statusline" id="anHealthSummary"></div><div class="findings" id="anHealth"></div></div>
+      <div class="card"><h3>Statistik im Zeitraum</h3><div class="tablewrap short"><table id="anStats"><tbody></tbody></table></div></div>
+    </div>
+    <div class="grid cols-2 mt" id="anCharts"></div>
+    <div class="grid cols-2 mt">
+      <div class="card"><h3>Top-Verbraucher CPU <span class="spacer"></span><span class="sub muted">Ø über Zeitraum, Prozessgruppen</span></h3><div class="tablewrap short"><table id="anTopCpu"><tbody></tbody></table></div></div>
+      <div class="card"><h3>Top-Verbraucher RAM <span class="spacer"></span><span class="sub muted">Ø RSS über Zeitraum</span></h3><div class="tablewrap short"><table id="anTopMem"><tbody></tbody></table></div></div>
+    </div>
+    <div class="grid cols-2 mt">
+      <div class="card"><h3>Container CPU (Top 8)</h3><div class="chart tall" id="anCtCpu"></div></div>
+      <div class="card"><h3>Container RAM (Top 8)</h3><div class="chart tall" id="anCtMem"></div></div>
+    </div>
+    <div class="card mt"><h3>Belegung der Dateisysteme &amp; Prognose</h3><div class="chart tall" id="anDisk"></div><div id="anForecast" class="mt"></div></div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer">
+  <button class="iconbtn close" id="drawerClose">✕</button>
+  <div id="drawerBody"></div>
+</aside>
+
+<script src="/static/charts.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
